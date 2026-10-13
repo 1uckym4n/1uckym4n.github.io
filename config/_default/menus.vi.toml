@@ -1,22 +1,22 @@
-# Menu chính — mỗi section là một "loại blog" riêng
+# Menu chính
 [[main]]
   name = "Trang chủ"
   pageRef = "/"
   weight = 10
 
 [[main]]
-  name = "Kỹ thuật"
-  pageRef = "/ky-thuat"
+  name = "Blogs"
+  pageRef = "/blogs"
   weight = 20
 
 [[main]]
-  name = "CTI"
-  pageRef = "/cti"
+  name = "Categories"
+  pageRef = "/categories"
   weight = 30
 
 [[main]]
-  name = "CTF"
-  pageRef = "/ctf"
+  name = "About me"
+  pageRef = "/about-me"
   weight = 40
 
 [[main]]
