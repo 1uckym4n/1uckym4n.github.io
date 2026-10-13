@@ -1,17 +1,115 @@
 /* CSS tùy chỉnh của bạn — theme tự load file này */
 
-/* Thanh tab chủ đề trên trang Blogs */
+/* nới cột chữ bài viết rộng hơn 65ch mặc định */
+main section.prose > div {
+  max-width: 48rem !important;
+}
+
+/* ===== Video background ===== */
+#bg-video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+  pointer-events: none;
+}
+
+body {
+  background-color: transparent !important;
+}
+
+/* Blur dẫn: đỉnh trang nét → càng xuống càng mờ, phủ toàn chiều ngang */
+#bg-fade {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg,
+    rgba(8, 15, 35, 0.50)   0px,
+    rgba(8, 15, 35, 0.65) 480px,
+    rgba(8, 15, 35, 0.88) 950px,
+    rgba(8, 15, 35, 0.92)  100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  /* mặt nạ: blur = 0 ở đỉnh, mạnh dần xuống dưới */
+  -webkit-mask-image: linear-gradient(180deg, transparent 0px, rgba(0,0,0,0.55) 480px, #000 950px);
+  mask-image: linear-gradient(180deg, transparent 0px, rgba(0,0,0,0.55) 480px, #000 950px);
+}
+
+/* bóng chữ nhẹ tăng độ tương phản trên nền video */
+main > article {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+/* chữ sáng hơn để dễ đọc trên nền tuyết (dark mode) */
+.dark .prose {
+  --tw-prose-body: rgba(236, 240, 248, 0.98);
+  --tw-prose-headings: #ffffff;
+  --tw-prose-bold: #ffffff;
+  --tw-prose-links: rgb(var(--color-primary-300));
+  --tw-prose-quotes: rgba(226, 232, 240, 0.95);
+  --tw-prose-quote-border: rgb(var(--color-primary-500));
+  --tw-prose-captions: rgba(203, 213, 225, 0.85);
+  --tw-prose-code: rgb(var(--color-neutral-100));
+}
+
+.dark main > article .text-neutral-400,
+.dark main > article .text-neutral-500 {
+  color: rgba(203, 213, 225, 0.95) !important; /* ngày · số từ · thời gian đọc */
+}
+
+/* ===== Các bề mặt kính mờ ===== */
+header div[class*="bg-neutral"] {
+  background-color: rgba(12, 22, 48, 0.55) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* card trong danh sách/homepage giữ nền kính mờ */
+section article {
+  background-color: rgba(12, 22, 48, 0.55) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Lưới Recent fullwidth của theme dùng trick w-screen + start[calc]
+   gây lệch khi body bị giới hạn 1280px — trả về khối thường căn giữa */
+main div.relative.w-screen {
+  position: static !important;
+  width: 100% !important;
+  max-width: none !important;
+  inset-inline-start: 0 !important;
+  padding-inline: 0 !important;
+}
+
+/* Lưới Recent: tối đa 3 cột như trang mẫu (theme mặc định chia tới 4-5 cột làm card bé) */
+main div.relative.w-screen section.grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+@media (max-width: 640px) {
+  main div.relative.w-screen section.grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ===== Thanh tab chủ đề trên trang Blogs ===== */
 .blog-tabbar {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
   width: max-content;
   max-width: 100%;
-  margin: 0 0 2rem;
+  margin: 0 0 1.5rem;
   padding: 0.35rem;
-  border: 1px solid rgb(var(--color-neutral-200));
+  border: 1px solid rgba(147, 197, 253, 0.25) !important;
   border-radius: 9999px;
-  background: rgb(var(--color-neutral-50));
+  background-color: rgba(12, 22, 48, 0.55) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .blog-tabbar button {
@@ -21,34 +119,18 @@
   padding: 0.4rem 1.15rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: rgb(var(--color-neutral-600));
+  color: rgb(var(--color-neutral-400));
   cursor: pointer;
+  text-decoration: none !important; /* theme có .active gạch chân — tắt cho tab này */
   transition: color 0.15s ease, background-color 0.15s ease;
 }
 
 .blog-tabbar button:hover {
-  color: rgb(var(--color-neutral-900));
-}
-
-.blog-tabbar button.active {
-  background: rgb(var(--color-neutral-200));
-  color: rgb(var(--color-neutral-900));
-}
-
-.dark .blog-tabbar {
-  background: rgb(var(--color-neutral-900));
-  border-color: rgb(var(--color-neutral-800));
-}
-
-.dark .blog-tabbar button {
-  color: rgb(var(--color-neutral-400));
-}
-
-.dark .blog-tabbar button:hover {
   color: rgb(var(--color-neutral-200));
 }
 
-.dark .blog-tabbar button.active {
-  background: rgb(var(--color-neutral-700));
-  color: rgb(var(--color-neutral-50));
+.blog-tabbar button.active {
+  background-color: rgba(96, 165, 250, 0.35) !important;
+  color: rgb(var(--color-neutral-50)) !important;
+  text-decoration: none !important;
 }

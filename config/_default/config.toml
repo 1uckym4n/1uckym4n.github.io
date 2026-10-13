@@ -2,7 +2,7 @@
 theme = "blowfish"
 baseURL = "https://1uckym4n.github.io/"
 defaultContentLanguage = "en"
-title = "dn4m's blog"
+title = "dn4m"
 
 enableRobotsTXT = true
 paginate = 20

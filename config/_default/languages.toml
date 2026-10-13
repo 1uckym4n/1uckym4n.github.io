@@ -7,6 +7,7 @@
     displayName = "EN"
     isoCode = "en"
     dateFormat = "January 2, 2006"
+    logo = "img/avatar.png"
 
   [en.params.author]
     name = "dn4m"

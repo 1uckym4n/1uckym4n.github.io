@@ -1,7 +1,7 @@
 # Giao diện & tính năng — đầy đủ options: https://blowfish.page/docs/configuration/
-colorScheme = "blowfish"        # bộ màu: blowfish, avocado, fire, ocean, slate, nocean
-defaultAppearance = "dark"      # mặc định mở dark mode
-autoSwitchAppearance = true     # theo theo hệ điều hành của người đọc
+colorScheme = "ocean"           # bộ màu xanh blue: ocean
+defaultAppearance = "dark"      # site thiết kế dark theo video nền
+autoSwitchAppearance = false    # không theo OS — toggle dark/light vô dụng với nền video
 
 enableSearch = true             # ô tìm kiếm trên header
 enableCodeCopy = true           # nút copy ở code block
@@ -11,13 +11,17 @@ enableCodeCopy = true           # nút copy ở code block
   layout = "profile"
   showRecent = true
   recentLimit = 6
-  cardView = true
+  showRecentItems = 9
+  cardView = true             # Recent dạng lưới card (template có sẵn của theme)
+  cardViewScreenWidth = true  # card chiếm toàn bộ chiều ngang, lưới 3 cột
+  showMoreLink = true         # nút Show More
+  showMoreLinkDest = "/blogs/"
 [header]
   layout = "floating"
 # Trang danh sách của từng section
 [list]
   showHero = false
-  showSummary = true
+  showSummary = false   # card gọn: không hiện đoạn tóm tắt
   showTableOfContents = false
   showCards = true      # bài hiển thị dạng card viền bo
   groupByYear = false   # không nhóm theo năm (tab lọc sẽ gọn hơn)
@@ -27,14 +31,16 @@ enableCodeCopy = true           # nút copy ở code block
   showDate = true
   showDateOnlyInArticle = false
   showDateUpdated = false
-  showAuthor = true
-  showReadingTime = true
-  showWordCount = false
+  showAuthor = false           # blog cá nhân — không cần box tác giả trong bài
+  showReadingTime = false      # bỏ "x min"
+  showWordCount = false        # bỏ "x words"
+  showTaxonomies = true       # điều kiện để tag/category hiện ra
+  showTags = true
   showTableOfContents = true
   showPagination = true
-  showTags = true
 
 # Mục footer
 [footer]
   showCopyright = true
   showThemeAttribution = true
+  showAppearanceSwitcher = false  # đã bỏ nút dark/light — site luôn dark
