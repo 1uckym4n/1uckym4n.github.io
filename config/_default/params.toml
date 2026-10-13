@@ -1,0 +1,36 @@
+# Giao diện & tính năng — đầy đủ options: https://blowfish.page/docs/configuration/
+colorScheme = "blowfish"        # bộ màu: blowfish, avocado, fire, ocean, slate, nocean
+defaultAppearance = "dark"      # mặc định mở dark mode
+autoSwitchAppearance = true     # theo theo hệ điều hành của người đọc
+
+enableSearch = true             # ô tìm kiếm trên header
+enableCodeCopy = true           # nút copy ở code block
+
+# Trang chủ: lời chào + danh sách bài mới nhất từ mọi section
+[homepage]
+  layout = "page"
+  showRecent = true
+  recentLimit = 6
+
+# Trang danh sách của từng section
+[list]
+  showHero = false
+  showSummary = true
+  showTableOfContents = false
+
+# Trang bài viết
+[article]
+  showDate = true
+  showDateOnlyInArticle = false
+  showDateUpdated = false
+  showAuthor = true
+  showReadingTime = true
+  showWordCount = false
+  showTableOfContents = true
+  showPagination = true
+  showTags = true
+
+# Mục footer
+[footer]
+  showCopyright = true
+  showThemeAttribution = true
