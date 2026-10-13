@@ -1,0 +1,12 @@
+# Menu chính
+
+[[main]]
+  name = "Blogs"
+  pageRef = "/blogs"
+  weight = 20
+
+[[main]]
+  name = "About me"
+  pageRef = "/about-me"
+  weight = 40
+

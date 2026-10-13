@@ -4,10 +4,10 @@ date: 2026-10-13T10:00:00+07:00
 draft: false
 description: "Bài mẫu để kiểm tra giao diện: heading, code block, danh sách, bảng và tag."
 tags: ["hugo", "web"]
-categories: ["Hướng dẫn"]
+categories: ["tech"]
 ---
 
-Đây là bài mẫu — bạn chỉ cần sửa file Markdown này hoặc tạo file mới trong `content/ky-thuat/`.
+Đây là bài mẫu — bạn chỉ cần sửa file Markdown này hoặc tạo file mới trong `content/blogs/`.
 
 ## Viết bài như thế nào
 

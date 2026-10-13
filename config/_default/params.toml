@@ -6,17 +6,21 @@ autoSwitchAppearance = true     # theo theo hệ điều hành của người đ
 enableSearch = true             # ô tìm kiếm trên header
 enableCodeCopy = true           # nút copy ở code block
 
-# Trang chủ: lời chào + danh sách bài mới nhất từ mọi section
+# Trang chủ: avatar tác giả (layout profile) + danh sách bài mới dạng card
 [homepage]
-  layout = "page"
+  layout = "profile"
   showRecent = true
   recentLimit = 6
-
+  cardView = true
+[header]
+  layout = "floating"
 # Trang danh sách của từng section
 [list]
   showHero = false
   showSummary = true
   showTableOfContents = false
+  showCards = true      # bài hiển thị dạng card viền bo
+  groupByYear = false   # không nhóm theo năm (tab lọc sẽ gọn hơn)
 
 # Trang bài viết
 [article]

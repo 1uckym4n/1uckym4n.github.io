@@ -1,0 +1,51 @@
+{{- /* Tab lọc bài tại chỗ (client-side) cho section "blogs" — tab tự sinh từ categories */ -}}
+{{- $terms := slice -}}
+{{- range where site.RegularPages "Section" "blogs" -}}
+  {{- $terms = union $terms (.GetTerms "categories") -}}
+{{- end -}}
+
+<div id="blog-tabs" class="blog-tabbar">
+  <button type="button" data-cat="all" class="active">All</button>
+  {{- range sort $terms "Title" }}<button type="button" data-cat="{{ .Title }}">{{ .Title }}</button>{{ end }}
+</div>
+
+{{- $m := dict -}}
+{{- range where site.RegularPages "Section" "blogs" -}}
+  {{- $cats := slice -}}
+  {{- range .GetTerms "categories" -}}{{- $cats = $cats | append .Title -}}{{- end -}}
+  {{- $m = merge $m (dict .RelPermalink $cats) -}}
+{{- end -}}
+<script id="blogtabs-data" type="application/json">{{ $m | jsonify | safeJS }}</script>
+
+<script>
+(function () {
+  var bar = document.getElementById('blog-tabs');
+  if (!bar) return;
+  var data = JSON.parse(document.getElementById('blogtabs-data').textContent);
+  var tabs = [].slice.call(bar.querySelectorAll('button[data-cat]'));
+  var cards = [].filter.call(document.querySelectorAll('article'), function (c) {
+    var a = c.querySelector('a[href]');
+    if (!a) return false;
+    return Object.prototype.hasOwnProperty.call(data, a.getAttribute('href'));
+  });
+
+  function setTab(cat) {
+    tabs.forEach(function (b) { b.classList.toggle('active', b.dataset.cat === cat); });
+    cards.forEach(function (card) {
+      var href = card.querySelector('a[href]').getAttribute('href');
+      var cats = data[href] || [];
+      card.style.display = (cat === 'all' || cats.indexOf(cat) > -1) ? '' : 'none';
+    });
+  }
+
+  tabs.forEach(function (b) {
+    b.addEventListener('click', function () {
+      setTab(b.dataset.cat);
+      history.replaceState(null, '', b.dataset.cat === 'all' ? '#' : '#' + b.dataset.cat);
+    });
+  });
+
+  var h = decodeURIComponent(location.hash.replace('#', ''));
+  setTab(tabs.some(function (b) { return b.dataset.cat === h; }) ? h : 'all');
+})();
+</script>

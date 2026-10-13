@@ -1,4 +1,18 @@
-[vi]
-label = "Tiếng Việt"
-locale = "vi-VN"
-weight = 1
+[en]
+  label = "English"
+  locale = "en-US"
+  weight = 1
+
+  [en.params]
+    displayName = "EN"
+    isoCode = "en"
+    dateFormat = "January 2, 2006"
+
+  [en.params.author]
+    name = "dn4m"
+    image = "img/avatar.png"
+    # headline = "Home Server, AI & Self-Hosting - Tinkering Together"
+    # links = [
+    #   { x-twitter = "https://x.com/..." },
+    #   { github = "https://github.com/1uckym4n" },
+    # ]

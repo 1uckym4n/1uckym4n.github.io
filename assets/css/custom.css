@@ -1,0 +1,54 @@
+/* CSS tùy chỉnh của bạn — theme tự load file này */
+
+/* Thanh tab chủ đề trên trang Blogs */
+.blog-tabbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 0 2rem;
+  padding: 0.35rem;
+  border: 1px solid rgb(var(--color-neutral-200));
+  border-radius: 9999px;
+  background: rgb(var(--color-neutral-50));
+}
+
+.blog-tabbar button {
+  border: 0;
+  background: transparent;
+  border-radius: 9999px;
+  padding: 0.4rem 1.15rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgb(var(--color-neutral-600));
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.blog-tabbar button:hover {
+  color: rgb(var(--color-neutral-900));
+}
+
+.blog-tabbar button.active {
+  background: rgb(var(--color-neutral-200));
+  color: rgb(var(--color-neutral-900));
+}
+
+.dark .blog-tabbar {
+  background: rgb(var(--color-neutral-900));
+  border-color: rgb(var(--color-neutral-800));
+}
+
+.dark .blog-tabbar button {
+  color: rgb(var(--color-neutral-400));
+}
+
+.dark .blog-tabbar button:hover {
+  color: rgb(var(--color-neutral-200));
+}
+
+.dark .blog-tabbar button.active {
+  background: rgb(var(--color-neutral-700));
+  color: rgb(var(--color-neutral-50));
+}

@@ -1,8 +1,8 @@
 # Cấu hình chính của site — tham khảo: https://blowfish.page/docs/getting-started/
 theme = "blowfish"
 baseURL = "https://1uckym4n.github.io/"
-defaultContentLanguage = "vi"
-title = "Blog của tôi"
+defaultContentLanguage = "en"
+title = "dn4m's blog"
 
 enableRobotsTXT = true
 paginate = 20

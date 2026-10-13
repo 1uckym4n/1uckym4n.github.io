@@ -1,4 +1,6 @@
 ---
 title: "Blogs"
-description: "Tất cả bài viết: kỹ thuật, CTI và CTF writeup."
+description: "Tất cả bài viết, lọc theo chủ đề."
 ---
+
+{{< blogtabs >}}
