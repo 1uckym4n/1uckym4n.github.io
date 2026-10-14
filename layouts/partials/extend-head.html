@@ -1,0 +1,3 @@
+{{/* Register before the first paint, including cross-document pagereveal. */}}
+{{ $transition := resources.Get "js/blog-transition.js" | resources.Minify | resources.Fingerprint }}
+<script src="{{ $transition.RelPermalink }}" integrity="{{ $transition.Data.Integrity }}"></script>

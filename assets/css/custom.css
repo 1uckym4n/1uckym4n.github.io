@@ -5,18 +5,21 @@ main section.prose > div {
   max-width: 48rem !important;
 }
 
-/* ===== Video background ===== */
+/* ===== Video background (không render trên bài viết có thumbnail —
+       xem điều kiện trong layouts/partials/extend-footer.html) ===== */
 #bg-video {
   position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  z-index: -2;
+  z-index: -3;   /* đáy: dưới fade, dưới hero, dưới wrapper morph */
   pointer-events: none;
 }
 
-body {
+/* chỉ trong suốt thân trang khi video nền còn tồn tại — trang bài viết
+   có thumbnail (script trong extend-footer gỡ video) tự về nền tối theme */
+body:has(#bg-video) {
   background-color: transparent !important;
 }
 
@@ -26,7 +29,7 @@ body {
   top: 0;
   left: 0;
   width: 100%;
-  z-index: -1;
+  z-index: -2;   /* trên video, dưới hero + wrapper morph */
   pointer-events: none;
   background: linear-gradient(180deg,
     rgba(8, 15, 35, 0.50)   0px,
@@ -40,12 +43,48 @@ body {
   mask-image: linear-gradient(180deg, transparent 0px, rgba(0,0,0,0.55) 480px, #000 950px);
 }
 
-/* bóng chữ nhẹ tăng độ tương phản trên nền video */
-main > article {
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+/* Light mode: "sáng mùa đông" — sương trắng phủ video thay vì đêm tối */
+html:not(.dark) #bg-fade {
+  background: linear-gradient(180deg,
+    rgba(240, 246, 252, 0.45)   0px,
+    rgba(240, 246, 252, 0.68) 480px,
+    rgba(244, 249, 254, 0.94) 950px,
+    rgba(245, 250, 254, 0.96)  100%);
 }
 
-/* chữ sáng hơn để dễ đọc trên nền tuyết (dark mode) */
+/* Hero nằm TRÊN video + blur nhưng DƯỚI chữ — để wrapper morph (cùng
+   z-index, muộn hơn trong DOM) đè lên được lúc bay */
+#hero-background {
+  z-index: -1;
+}
+
+/* overlay tối mặc định của hero (50%) hơi nhẹ với ảnh sáng — thay bằng
+   gradient tối hơn ở vùng chữ để title vẫn đọc được khi ảnh nét */
+#hero-background > div:last-child {
+  background: linear-gradient(180deg,
+    rgba(8, 15, 35, 0.45) 0%,
+    rgba(8, 15, 35, 0.62) 55%,
+    rgba(8, 15, 35, 0.30) 100%) !important;
+}
+
+/* Light mode: hero phủ sương trắng, chữ tối của theme nổi trên nền sáng */
+html:not(.dark) #hero-background > div:last-child {
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.42) 0%,
+    rgba(255, 255, 255, 0.62) 55%,
+    rgba(255, 255, 255, 0.28) 100%) !important;
+}
+
+/* title đè trên hero cần bóng đậm để nổi trên ảnh sáng */
+main > article h1 {
+  text-shadow: 0 2px 10px rgba(4, 10, 26, 0.85), 0 0 28px rgba(4, 10, 26, 0.55);
+}
+
+html:not(.dark) main > article h1 {
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8), 0 0 18px rgba(255, 255, 255, 0.55);
+}
+
+/* chữ sáng hơn để dễ đọc (dark mode) */
 .dark .prose {
   --tw-prose-body: rgba(236, 240, 248, 0.98);
   --tw-prose-headings: #ffffff;
@@ -74,6 +113,12 @@ section article {
   background-color: rgba(12, 22, 48, 0.55) !important;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+}
+
+/* Light mode: kính trắng sữa */
+html:not(.dark) header div[class*="bg-neutral"],
+html:not(.dark) section article {
+  background-color: rgba(255, 255, 255, 0.55) !important;
 }
 
 /* Lưới Recent fullwidth của theme dùng trick w-screen + start[calc]
@@ -133,4 +178,132 @@ main div.relative.w-screen section.grid {
   background-color: rgba(96, 165, 250, 0.35) !important;
   color: rgb(var(--color-neutral-50)) !important;
   text-decoration: none !important;
+}
+
+/* Light mode cho tab bar */
+html:not(.dark) .blog-tabbar {
+  background-color: rgba(255, 255, 255, 0.55) !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+html:not(.dark) .blog-tabbar button {
+  color: rgb(var(--color-neutral-600));
+}
+
+html:not(.dark) .blog-tabbar button:hover {
+  color: rgb(var(--color-neutral-900));
+}
+
+html:not(.dark) .blog-tabbar button.active {
+  background-color: rgba(59, 130, 246, 0.22) !important;
+  color: rgb(var(--color-neutral-900)) !important;
+}
+
+/* Card → article: let the browser carry the old frame across navigation. */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-group(*) {
+  animation-duration: 700ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+::view-transition-old(*),
+::view-transition-new(*) {
+  mix-blend-mode: normal;
+}
+
+::view-transition-group(root) { z-index: 0; }
+::view-transition-group(blog-card) { z-index: 1; overflow: clip; }
+::view-transition-group(blog-cover) { z-index: 2; overflow: clip; }
+::view-transition-group(blog-nav) { z-index: 3; }
+
+::view-transition-old(root) {
+  animation: blog-page-out 260ms 100ms ease-out both;
+}
+::view-transition-new(root) {
+  animation: blog-page-in 300ms 330ms ease-out both;
+}
+::view-transition-old(blog-card) {
+  animation: blog-page-out 160ms ease-out both;
+}
+::view-transition-new(blog-card) {
+  animation: blog-page-in 160ms ease-out both;
+}
+::view-transition-old(blog-cover) {
+  animation: blog-page-out 200ms ease-out both;
+}
+::view-transition-new(blog-cover) {
+  animation: blog-page-in 220ms ease-out both;
+}
+::view-transition-image-pair(blog-card),
+::view-transition-image-pair(blog-cover) {
+  animation: blog-page-out 220ms 480ms ease-out both;
+}
+::view-transition-old(blog-nav) { animation: none; }
+::view-transition-new(blog-nav) { animation: none; }
+
+@keyframes blog-page-out { to { opacity: 0; } }
+@keyframes blog-page-in { from { opacity: 0; } to { opacity: 1; } }
+
+.blog-transition-surface {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  overflow: hidden;
+  pointer-events: none;
+  background: rgb(var(--color-neutral-800));
+}
+.blog-transition-backdrop {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -3;
+  pointer-events: none;
+}
+html:not(.dark) .blog-transition-surface {
+  background: rgb(var(--color-neutral));
+}
+.blog-transition-surface .blog-transition-hero {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  z-index: auto;
+  width: 100%;
+}
+/* Same gradient as the article, including its existing fade into the page. */
+.blog-transition-hero > div:last-child {
+  background: linear-gradient(180deg,
+    rgba(8, 15, 35, 0.45) 0%,
+    rgba(8, 15, 35, 0.62) 55%,
+    rgba(8, 15, 35, 0.30) 100%) !important;
+}
+html:not(.dark) .blog-transition-hero > div:last-child {
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.42) 0%,
+    rgba(255, 255, 255, 0.62) 55%,
+    rgba(255, 255, 255, 0.28) 100%) !important;
+}
+.blog-transition-card {
+  position: absolute;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  background-color: rgba(12, 22, 48, 0.55) !important;
+}
+html:not(.dark) .blog-transition-card {
+  background-color: rgba(255, 255, 255, 0.55) !important;
+}
+html.blog-transition-pending #main-content,
+html.blog-transition-pending #hero-background {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+  html.blog-transition-pending #main-content,
+  html.blog-transition-pending #hero-background { opacity: 1; }
 }

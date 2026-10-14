@@ -1,6 +1,7 @@
 ---
 title: "About me"
-description: "Giới thiệu về tôi."
+description: "Who I am, what I do, and how to reach me."
+showHero: false
 showDate: false
 showReadingTime: false
 showWordCount: false

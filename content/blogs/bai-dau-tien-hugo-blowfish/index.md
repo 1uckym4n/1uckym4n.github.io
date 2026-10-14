@@ -3,6 +3,7 @@ title: "Blog Hugo + Blowfish"
 date: 2026-10-13T10:00:00+07:00
 draft: false
 description: "Bài mẫu để kiểm tra giao diện: heading, code block, danh sách, bảng và tag."
+featureimage: "thumbnail.png"
 tags: ["hugo", "web"]
 categories: ["Example"]
 ---

@@ -25,6 +25,21 @@ buildFuture = false
   author = "authors"
   series = "series"
 
+# Bài viết liên quan (showRelatedContent) — Hugo mặc định chỉ tính "keywords",
+# phải khai báo tags/categories vào đây thì nó mới so khớp được
+[related]
+  threshold = 0          # 0 = hiện mọi bài có chung tag/category, sắp theo độ khớp
+  includeNewer = true    # tính cả bài cũ hơn
+  toLower = true         # không phân biệt hoa/thường
+
+[[related.indices]]
+  name = "tags"
+  weight = 100
+
+[[related.indices]]
+  name = "categories"
+  weight = 100
+
 [sitemap]
   changefreq = "daily"
   filename = "sitemap.xml"

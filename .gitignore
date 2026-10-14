@@ -6,3 +6,6 @@ resources/
 # OS / editor
 .DS_Store
 Thumbs.db
+
+# bản gốc 4K của video nền — không deploy
+video-src/

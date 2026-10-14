@@ -1,24 +1,6 @@
-<video id="bg-video" autoplay muted loop playsinline preload="auto">
-  <source src="/video/background.mp4" type="video/mp4">
+{{/* These partials are cached: decide which background to show in the browser. */}}
+<video id="bg-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true"
+  {{ with resources.Get site.Params.defaultBackgroundImage }}poster="{{ .RelPermalink }}"{{ end }}>
+  <source src="{{ "video/background.mp4" | relURL }}" type="video/mp4">
 </video>
-<div id="bg-fade"></div>
-<script>
-  /* Theme giới hạn body ở 1280px + h-screen, nên lớp gradient phải gắn vào <html>
-     (position:relative + full chiều cao tài liệu) để phủ toàn trang mọi kích thước màn hình */
-  (function () {
-    var fade = document.getElementById('bg-fade');
-    if (!fade) return;
-    var root = document.documentElement;
-    if (fade.parentElement !== root) root.appendChild(fade);
-    root.style.position = 'relative';
-    function size() {
-      fade.style.top = '0';
-      fade.style.left = '0';
-      fade.style.width = '100%';
-      fade.style.height = Math.max(root.scrollHeight, window.innerHeight) + 'px';
-    }
-    size();
-    window.addEventListener('resize', size);
-    window.addEventListener('load', size);
-  })();
-</script>
+<div id="bg-fade" aria-hidden="true"></div>

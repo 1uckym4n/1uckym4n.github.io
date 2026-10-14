@@ -5,6 +5,8 @@ autoSwitchAppearance = false    # không theo OS — toggle dark/light vô dụn
 
 enableSearch = true             # ô tìm kiếm trên header
 enableCodeCopy = true           # nút copy ở code block
+defaultBackgroundImage = "img/background.jpg"  # hero dự phòng cho bài chưa có featured
+                                              # (frame trích từ chính video tuyết)
 
 # Trang chủ: avatar tác giả (layout profile) + danh sách bài mới dạng card
 [homepage]
@@ -38,9 +40,16 @@ enableCodeCopy = true           # nút copy ở code block
   showTags = true
   showTableOfContents = true
   showPagination = true
+  showHero = true              # ảnh featured phủ lên đầu trang, chữ đè lên
+  heroStyle = "background"     # thumbnail làm nền full-width (basic = ảnh nằm trong cột)
+                               # (lần thử trước giật là do morph bản lỗi — đã sửa trong extend-footer)
+  showRelatedContent = true    # mục "Bài liên quan" cuối trang (tính theo tags/categories)
+  relatedContentLimit = 3      # tối đa 3 bài liên quan
 
 # Mục footer
 [footer]
   showCopyright = true
   showThemeAttribution = true
-  showAppearanceSwitcher = false  # đã bỏ nút dark/light — site luôn dark
+  showAppearanceSwitcher = true   # nút moon/sun trên header (render trong header menu)
+                                  # — theme có sẵn light palette, CSS tùy chỉnh có
+                                  # biến thể sáng dưới custom.css (html:not(.dark))
