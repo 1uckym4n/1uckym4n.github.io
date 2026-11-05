@@ -1,0 +1,635 @@
+---
+title: "Dịch Vụ Công: Unpacking a Virbox-protected Android RAT"
+date: 2026-11-05T11:10:00+07:00
+draft: false
+description: "Analysis of a fake Vietnamese government Android app, its Virbox protection, RAT capabilities, and indicators of compromise."
+summary: "A fake government app built from a live-streaming codebase: unpacking Virbox and tracing the Android RAT inside."
+featureimage: "attachment/48c279405b87770d72218cbc1ba3c474.png"
+images: ["attachment/48c279405b87770d72218cbc1ba3c474.png"]
+tags: ["android", "malware", "reverse-engineering", "virbox"]
+categories: ["Malware Analysis"]
+---
+
+## Summary
+
+This sample is an old 2024 fake government app, actually built from a Chinese live-streaming codebase, and shipped in Virbox armor. This post unpacks it, walks through the RAT inside, and notes down everything I learned along the way.
+
+`SHA-256: e642a96d45f1e977d04463b267595da7228887c0db26529c7c4e6179476f8381`
+## First contact
+### First look
+Before touching the DEX, I ran apkid. And there it was: **Virbox Protector**
+![](attachment/9e347ec7d3bb73eaefe44c102f5f335b.png)
+### What the manifest confesses
+#### Package: `com.phommvb.dotihanj`
+#### Permissions
+27 permissions, and the combo reads like a RAT shopping list.
+```
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE"/>
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES"/>
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
+    <uses-permission android:name="android.permission.GET_INSTALLED_APPS"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.GRANT_RUNTIME_PERMISSIONS"/>
+    <uses-permission android:name="android.permission.READ_SYNC_STATS"/>
+    <uses-permission android:name="android.permission.READ_SYNC_SETTINGS"/>
+    <uses-permission android:name="android.permission.DISABLE_KEYGUARD"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.READ_SMS"/>
+    <uses-permission android:name="android.permission.SEND_SMS"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+    <uses-permission android:name="android.permission.SET_WALLPAPER"/>
+    <uses-permission android:name="android.permission.CALL_PHONE"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.BATTERY_STATS"/>
+```
+#### Entry Point
+- `v4ccd64a6.l4ccd64a6`. This is the first code executed when the process is created, before any Activity. Its constructor hardcodes the protector's identity as a logging tag:
+![](attachment/b85c9959713903ba85b56c228893c0f2.png)
+- **`meta-data SAPP_NAME = "com.yiwuzhibo.BaseApplication"`** - a configuration value read by the loader at runtime naming the real Application class.
+   ```xml
+        <meta-data
+            android:name="SAPP_NAME"
+            android:value="com.yiwuzhibo.BaseApplication"/>
+   ```
+`com.yiwuzhibo.*` the code inside is literally a Chinese livestreaming app
+![](attachment/a82a07bb63f82214e98f6df1560d4aec.png)
+#### Accessibility
+```xml
+        <service
+            android:label="@string/ehv"
+            android:name="com.yiwuzhibo.controller.TouchAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/ao4"/>
+        </service>
+```
+The manifest asks Android to bind `TouchAccessibilityService` — and once the victim flips that switch, the app sees every screen its capabilities are defined in `@xml/ao4`:
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/r39"
+    android:accessibilityEventTypes="typeAllMask"
+    android:accessibilityFeedbackType="feedbackAllMask"
+    android:notificationTimeout="10"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds|flagRequestEnhancedWebAccessibility|flagIncludeNotImportantViews"
+    android:canRetrieveWindowContent="true"
+    android:canRequestEnhancedWebAccessibility="true"
+    android:canPerformGestures="true"/>
+accessibilityEventTypes="typeAllMask"      ← receives EVERY event type
+notificationTimeout="10"                   ← real-time, 10 ms delivery delay
+flagRetrieveInteractiveWindows             ← inspects all open windows
+flagReportViewIds                          ← identifies exact input fields by view ID
+flagRequestEnhancedWebAccessibility        ← can inject scripts into WebView content
+flagIncludeNotImportantViews               ← nothing on screen is filtered out
+canRetrieveWindowContent="true"            ← reads full on-screen content
+canPerformGestures="true"                  ← performs taps/swipes autonomously
+```
+#### Persistence
+| Declaration | Notes |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Permission `RECEIVE_BOOT_COMPLETED` | Wake on device start-up |
+| `AutoRestart` receiver — `BOOT_COMPLETED` intent-filter, `exported="true"` | Relaunches malware components after every reboot |
+| Supporting: `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, `WAKE_LOCK`, `DISABLE_KEYGUARD` | Survives battery-saving kills; keeps CPU awake; can dismiss the keyguard |
+#### Signing Certificate
+Command: `keytool -printcert -jarfile <sample>`
+```bash
+Signer #1:
+Certificate #1:
+Owner: C=(1), ST=(1), L=(1), O=(1), OU=(1), CN=(1) ← literally "(1)" in every field
+Serial number: 0x42b84b3b
+Valid from: Sun Jun 25 13:46:40 ICT 2023 until: Thu Jun 18 13:46:40 ICT 2048
+Certificate fingerprints:
+SHA1: 4C:BD:DC:EF:1D:FD:04:58:6B:76:40:2C:D0:46:82:8D:1D:D4:B7:A3
+SHA256: 81:AB:77:80:79:AE:2A:36:D5:4E:D8:C9:C8:53:96:BF:CD:12:70:E4:4C:15:32:31:9D:65:B2:1E:33:82:25:A3
+Signature algorithm: SHA256withRSA
+Subject Public Key Algorithm: 2048-bit RSA key
+```
+- Valid from **2023-06-25**, ~6.5 months before the APK build timestamp (2024-01-11 from zip entries) → signing infrastructure prepared in advance of the campaign.
+- Every DN field is the literal string `(1)` — an anonymous throwaway keystore. The SHA-256 above is a solid pivot indicator for sibling samples in this campaign.
+## Deep Dive
+### The Virbox armor
+#### Virbox Startup and Application Handoff
+**`attachBaseContext`** it works like a TLS callback in Windows that is run first, before the entry point. It loads the native lib corresponding arch and calls the native initial function.
+![[image-23.png|Decode strings and rename variables]]
+The Virbox wrapper’s overridden `onCreate()` prepares the runtime environment and then calls the original application’s `onCreate()` (`com.yiwuzhibo.BaseApplication`)
+```java
+@Override
+public void onCreate() {
+    if (this.f135d != null) { // The original Application was created.
+        try {
+            m4a(); // Replace framework references to the Virbox Application.
+            m5b(); // Point resources and assets to the restored app.
+            m7e(); // Restore and initialize content providers.
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    super.onCreate(); // Call Android's base Application.onCreate().
+    Application application = this.f135d;
+    if (application != null) {
+        try {
+            application.onCreate(); // Start the original application's initialization.
+        } catch (Exception e2) {
+            e2.printStackTrace();
+        }
+    }
+}
+```
+This malware uses string encryption throughout entire this class, this is the method string encryption:
+```java
+    public static String m3h(byte[] bArr) {
+        for (int i = 0; i < bArr.length; i++) {
+            bArr[i] = (byte) (bArr[i] ^ 105);
+        }
+        return new String(bArr, 0, bArr.length);
+    }
+```
+#### classes.dex
+`classes.dex` is 5.130.552 bytes, but its declared DEX structures end at offset 17.224 ( 0x4348 ). The remaining 5.113.328 bytes from an appended Virbox-protected blob that begins with the VBPD marker.
+![](attachment/55587eba8bd3da82f9a25ffab5f96054.png)
+So this is the APK structure once we decompress it.
+```
+APK
+├─ classes.dex
+│    ├─ First 17KB: stub (wrapper v4ccd64a6 + jntm)   ← unencrypted code
+│    └─ 5.11MB tail: "VBPD" blob                      ← ✗ PACKED: the entire real app lives here
+├─ assets/l4ccd64a6_{a64,a32,x64,x86}.so              ← GROUP A: Virbox loader (per-ABI)
+├─ assets/kqkticwjgzy.dat (magic SENS)                ← loader's auxiliary encrypted config
+├─ lib/*/libnative-lib.so                             ← GROUP B: real app — NOT encrypted
+└─ lib/*/libstrategy.so                               ← GROUP B: strategies — NOT encrypted
+```
+#### `libstrategy.so` — Embedded PIN-Harvesting Strategies
+The library exposes two JNI entry points consumed by the packed DEX layer:
+`Java_com_yiwuzhibo_utils_StrangeFactory_getStrategyData` and
+`Java_com_yiwuzhibo_utils_StrangeFactory_getPhoneData`. Embedded in `.rodata`
+are **19 JSON configuration objects** that instruct the accessibility service
+what to read on which screen.
+![](attachment/0120d0add6ffe37d8edd9d74598e421a.png)
+**config schema** (two families):
+
+| Field                              | Meaning                                                                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `condition.pkg` / `nodes`          | foreground package + view IDs that trigger the strategy                                                                                     |
+| `listens.listenMethod`             | capture mode: `listenClick` (keypad node→digit map), `listenTextPassword` (read password field), `listenMask`, `listenChild` (pattern view) |
+| `listens.keys`                     | view-ID → digit mapping for keypad reconstruction                                                                                           |
+| `listens.returnType`               | capture payload: `text` / `image` / `video` (screen recording for pattern locks)                                                            |
+| `useIn.brand` / `ui` / `uiVersion` | device OEM / launcher skin the entry applies to                                                                                             |
+Representative entry (Samsung One UI lockscreen PIN):
+```json
+{"strategyName": "samsung keys", "strategyType": "pin",
+ "useIn": {"brand": "samsung", "ui": "One UI"},
+ "condition": {"pkg": "com.android.systemui",
+               "nodes": ["com.android.systemui:id/pinEntry"]},
+ "listens": {"listenMethod": "listenClick", "returnType": "text",
+             "keys": {"com.android.systemui:id/key1": "1",
+                      "com.android.systemui:id/key0": "0",
+                      "com.android.systemui:id/delete_button": "-1"},
+             "keyIsFloat": false}}
+```
+**Covered targets**:
+The embedded strategy
+
+| Target | Package | Note |
+| ----------------------------- | ----------------------------- | ----------------------------------------------------------------------------- |
+| Device lockscreen PIN/pattern | `com.android.systemui` | Samsung, Xiaomi, Vivo, OPPO, Realme, OnePlus, Motorola, Meizu, Infinix, Honor |
+| VietinBank iPay 🇻🇳 | `com.vietinbank.ipay` | keypad ids `tvmot…tvzero` (Vietnamese numerals) |
+| mymo / GSB 🇹🇭 | `com.mobilife.gsb.mymo` | `t9_key_1…0` |
+| Bangkok Bank 🇹🇭 | `com.bbl.mobilebanking` | `number1…0` |
+| CIMB THAI 🇹🇭 | `com.cimbthai.digital.mycimb` | `editTextPasscode` |
+| TMB (ttb) 🇹🇭 | `com.TMBTOUCH.PRODUCTION` | `grid_pad` |
+| SCB EASY 🇹🇭 | `com.scb.phone` | `button_1…` |
+| Krungthai NEXT 🇹🇭 | `ktbcs.netbank` | `btn1…` |
+
+The 19 embedded strategies serve a single purpose: harvesting unlock credentials - device lockscreen PIN/pattern and banking-app PINs. Coverage spans 10 OEM lockscreen skins and seven Southeast Asia banking apps: one Vietnamese and six Thai. Although this app shows many Vietnam-targeting characteristics, its embedded configurations still include numerous Thai banking apps. This suggests the malware was reused from another campaign targeting the APAC region.
+Full strategy : [link](https://github.com/1uckym4n/Store/blob/main/DichVuCong/strategy-config.json)
+### Unpacking Virbox
+#### Dynamic Unpacking
+Run it on a rooted phone and the Virbox loader kills itself by jumping to `0xdead3000` — anti-analysis.
+```
+adb logcat -d -b crash
+11-04 08:49:38.621 19310 19310 F DEBUG   : signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0x00000000dead3000
+11-04 08:49:38.621 19310 19310 F DEBUG   :     x0  00000000dead3000  x1  0000000000000000  x2  0000000000000000  x3  0000000000000000
+11-04 08:49:38.621 19310 19310 F DEBUG   :     x4  0000000000000000  x5  0000000000000000  x6  0000000000000000  x7  0000000000000000
+11-04 08:49:38.621 19310 19310 F DEBUG   :     x8  0000000000000000  x9  0000000000000000  x10 0000000000000000  x11 0000000000000000
+11-04 08:49:38.621 19310 19310 F DEBUG   :     x12 0000000000000000  x13 0000000000000000  x14 0000000000000000  x15 0000000000000000
+11-04 08:49:38.621 19310 19310 F DEBUG   :     x16 0000000000000000  x17 0000000000000000  x18 0000000000000000  x19 0000000000000000
+11-04 08:49:38.621 19310 19310 F DEBUG   :     x20 0000000000000000  x21 0000000000000000  x22 0000000000000000  x23 0000000000000000
+11-04 08:49:38.621 19310 19310 F DEBUG   :     x24 0000000000000000  x25 0000000000000000  x26 0000000000000000  x27 0000000000000000
+11-04 08:49:38.621 19310 19310 F DEBUG   :     x28 0000000000000000  x29 0000000000000000
+11-04 08:49:38.621 19310 19310 F DEBUG   :     lr  0000007a988981d4  sp  0000000000000000  pc  00000000dead3000  pst 0000000060000000
+11-04 08:49:38.621 19310 19310 F DEBUG   :       #00 pc 00000000dead3000  <unknown>
+11-04 08:49:38.621 19310 19310 F DEBUG   :       #01 pc 00000000002381d0  /data/data/com.phommvb.dotihanj/files/.ss/l4ccd64a6.so
+```
+To deal with this, we just need to add `com.phommvb.dotihanj` into Magisk's `denylist`.
+```
+adb shell
+su
+magisk --denylist add com.phommvb.dotihanj
+magisk --denylist enable
+magisk --denylist status
+```
+Now I'm in
+![](attachment/48c279405b87770d72218cbc1ba3c474.png)
+As we know, there are 2 encrypted DEX files in the tail of `classes.dex`. Virbox has to decrypt both at runtime to feed them to ART.
+```
+Virbox (l4ccd64a6.so) decrypts the DEX in memory
+        ↓
+DexFile / InMemoryDexClassLoader / direct native call
+        ↓
+ART: libdexfile.so → DexFileLoader::Open(buffer, size, ...)
+        ↓
+   ← OUR HOOK SITS HERE — the bytes exist intact, plaintext, at that exact moment
+```
+We could hook Java APIs (like `DexClassLoader`,...) can be bypassed by packer; hooking `libdexfile.so` cannot be avoided by anyone - it is the deepest layer every DEX must show up there.
+```js
+// one job: dump every DEX ART ingests. frida -U -f com.phommvb.dotihanj -l dump-dex-mini.js
+//frida -U -f com.phommvb.dotihanj -l dump-dex-mini.js
+//adb shell su -c "cp /data/data/com.phommvb.dotihanj/dump-*.dex /sdcard/Download/"
+//adb pull /sdcard/Download
+const fopen   = new NativeFunction(Module.getGlobalExportByName("fopen"),  "pointer", ["pointer", "pointer"]);
+const fwrite  = new NativeFunction(Module.getGlobalExportByName("fwrite"), "size_t",  ["pointer", "size_t", "size_t", "pointer"]);
+const fclose  = new NativeFunction(Module.getGlobalExportByName("fclose"), "int",     ["pointer"]);
+const wb = Memory.allocUtf8String("wb");
+const seen = new Set(); let n = 0;
+function dump(p) {
+  try {
+    const m = p.readU32();                                   // "dex\n" or "cdex"
+    if (m !== 0x0a786564 && m !== 0x78656463) return;
+    const size = p.add(0x20).readU32();                      // header file_size
+    if (size < 0x70 || seen.has(p.toString())) return;
+    p.add(size - 1).readU8();                                // readable to the end?
+    seen.add(p.toString());
+    const f = fopen(Memory.allocUtf8String("/data/data/com.phommvb.dotihanj/dump-" + ++n + ".dex"), wb);
+    if (f.isNull()) return;
+    fwrite(p, 1, size, f); fclose(f);
+    console.log("[dump] #" + n + "  " + size + " bytes  @ " + p);
+  } catch (_) {}
+}
+//Step 1 : Gets the libdexfile.so module and enumberates all its symbols
+for (const s of Process.findModuleByName("libdexfile.so").enumerateSymbols()) {
+//Open: The real ingestion
+//IsMagicValid
+  if (s.type === "function" && /DexFileLoader.*(Open|IsMagicValid)/.test(s.name))
+    Interceptor.attach(s.address, { onEnter(a) { for (let i = 0; i < 8; i++) dump(a[i]); } });
+}
+```
+Now we dumped out 5 DEX files
+
+| # | What it was |
+| --- | ------------------------------------------------- |
+| 1 | APK's stub classes.dex |
+| 2 | Payload DEX #1 (9.6 MB, via Open) |
+| 3 | com/fakeClass 316-byte decoy, address A |
+| 4 | Payload DEX #2 (2.6 MB, via Open) |
+| 5 | Same 316-byte decoy, address B (.ss/classes2.dex) |
+#### Static Unpacking
+##### Find the native parser
+This snippet (in ARM64 .so) checks for the Virbox blob signature, `VBPD`. Along this execution path, the obfuscating arithmetic operations cancel out, while temporary values are overwritten before the final comparison.
+![](attachment/f584f8e3245746cd8654eaac9a24dfc4.png)
+So the simplified code is:
+```asm
+0x060FB0  LDR   W8, [X25]
+0x060FE4  MOV   W9, #0x4256
+0x061018  MOVK  W9, #0x4450, LSL #16
+0x061060  CMP   W8, W9
+```
+So `X25` is the start address of packed Virbox blob. Now, we have to trace which function call this method to check signature. If it matches, the flow will jump to `0x59C10`
+![](attachment/8635e68fb55526101e066bde52336c98.png)
+Starting at `0x59C10` and following the code forward, we reach an indirect branch, `BR X17`, at `0x59D1C`
+![](attachment/84971275bc68b0a679493588064d6824.png)
+After all, X17 is equal `0xC0FE0` , instruction:
+```
+0x59C40  LDR   W0, qword_59C90      ; Read 0x0006739E ; LDR = Load Register
+0x59C54  SXTW  X0, W0              ; X0 = 0x6739E ; SXTW = Sign Extend Word
+0x59C70  ADR   X1, qword_59C90      ; X1 = 0x59C90 ; ADR = Address generation relative to the current instruction
+0x59C8C  B     loc_59C9C           ; Skip embedded data and 0x59C98 ; B = jmp
+; Literal at 0x59C90:
+; 9E 73 06 00 → 0x0006739E
+0x59C9C  ADD   X0, X0, X1          ; X0 = 0xC102E
+0x59CB0  STR   X0, [SP,#0x18]      ; Save target precursor,Mem64[P + 0x18] = 0xC102E ;STR = Store
+0x59CC4  LDP   X0, X1, [SP],#0x10  ; SP advances by 0x10 ; LDP = Load Pair of Registers.
+0x59CE0  LDR   X17, [SP,#8]        ; Reload saved value: X17 = 0xC102E
+0x59CFC  ADD   SP, SP, #0x10       ; Stack cleanup
+0x59D00  AND   X17, X17, X17       ; X17 unchanged
+0x59D04  SUB   X17, X17, #0x44     ; X17 = 0xC0FEA
+0x59D08  SUB   SP, SP, #0xD0
+0x59D0C  ADD   SP, SP, #0x40
+0x59D10  ADD   SP, SP, #0x90       ; These three SP changes cancel
+0x59D14  SUB   X17, X17, #0xA      ; X17 = 0xC0FE0
+0x59D18  ADD   X17, X17, #0        ; X17 unchanged
+0x59D1C  BR    X17                 ; Jump to 0xC0FE0
+```
+Continue with 0xC0FE0, the program will jump into `0x1F23F8`:
+![](attachment/37d23563f18201c1bc6a8b6f5c8e8828.png)
+Keep going keep going, we will catch:
+```
+0x1F2874                 B  loc_25C098
+```
+Did you remember `X25`, yeah it's the head of Virbox blob. This instruction loads 16 bytes from `VBPD + 0x28` into `Q0`. Then jump to `0x62AE0`
+![](attachment/1ef6855fb79679a8e19f091d8f3e7539.png)
+Keep Going we catch an BR again `0x62BF8 BR X19`. If you trace `X19`:
+```
+0x62B28  LDR   W0, off_62B64
+         ; Read bytes 4A 1F 1A 00.
+         ; W0 = 0x001A1F4A.
+0x62B3C  SXTW  X0, W0
+         ; Sign-extend the 32-bit value.
+         ; X0 = 0x1A1F4A.
+0x62B58  ADR   X1, off_62B64
+         ; X1 = address of the literal = 0x62B64.
+0x62B60  B     loc_62B70
+         ; Skip the embedded literal and intervening instructions.
+0x62B70  ADD   X0, X0, X1
+         ; X0 = 0x1A1F4A + 0x62B64 = 0x204AAE.
+0x62B84  STR   X0, [SP,#0x18]
+         ; Save 0x204AAE.
+         ; Let the current SP be P: store at P + 0x18.
+0x62B98  LDP   X0, X1, [SP],#0x10
+         ; Load the saved register pair, then SP = P + 0x10.
+0x62BB4  LDR   X19, [SP,#8]
+         ; Read from P + 0x10 + 8 = P + 0x18.
+         ; X19 = 0x204AAE.
+0x62BD0  ADD   SP, SP, #0x10
+0x62BD4  STP   X19, X30, [SP,#-0x10]!
+         ; Save the current X19 and X30.
+0x62BD8  LDR   X19, loc_62BD8
+         ; Temporarily overwrite X19.
+0x62BDC  LDP   X19, X30, [SP],#0x10
+         ; Restore the saved X19 = 0x204AAE.
+0x62BE0  SUB   X19, X19, #0x44
+         ; X19 = 0x204A6A.
+0x62BE4  B     loc_62BE8
+0x62BE8  SUB   X19, X19, #0x22
+         ; X19 = 0x204A48.
+0x62BEC  STP   X19, X30, [SP,#-0x10]!
+         ; Save X19 = 0x204A48.
+0x62BF0  LDR   X19, loc_62BF0
+         ; Temporarily overwrite X19 again.
+0x62BF4  LDP   X19, X30, [SP],#0x10
+         ; Restore X19 = 0x204A48.
+0x62BF8  BR    X19
+         ; Continue execution at 0x204A48.
+```
+Keep going, we almost there from `0x204A48`.We got:
+```
+0x204A6C                 B  loc_18B530
+```
+and then:
+```
+0x18B58C                 B  loc_25C0A8
+```
+at `0x25C0A8` we got:
+```
+0x25C0A8  MOVI V1.16B, #0x2A
+0x25C0AC  EOR  V0.16B, V0.16B, V1.16B
+```
+`Q0` and `V0.16B` refer to the **same 128-bit register**, viewed using different notation. Two instructions above mean:
+```python
+#Move it copies the constant 0x2A into every byte of V1
+V1 = [2A 2A 2A 2A 2A 2A 2A 2A 2A 2A 2A 2A 2A 2A 2A 2A]
+## EOR destination, source1, source2 = XOR
+for i in range(16):
+    v0[i] = v0[i] ^ v1[i]
+## It mean the program will XOR the first 16-bytes from VBPD + 0x28
+```
+Keep tracking, we will get:
+```asm
+171D78                 BR X3 ;X3 = 0x188528
+```
+And then:
+```
+192DBC                 B  loc_25C0E8
+```
+At `25C0E8`:
+```
+.text:000000000025C0E8                 STUR            Q0, [X29,#-0x70]
+.text:000000000025C0EC                 B               word_1FCC08
+```
+STUR instruction stores the XORed value into `[X29-0x70]`, and if you notice, we just skimmed past
+```
+.text:0000000000192B14                 SUB             X1, X29, #0x70 ; 'p'
+```
+It means The XORed value is stored into X1
+And then… **a dozen obfuscated trampolines later** (`0x1FCC08 → 0xd8308 → 0x1196EC → … → 0x25FD50`), we finally hit a real instruction:
+```
+0x25FD50  LDR Q0, [X12, #0xDE0]
+```
+Inspect the bytes being loaded
+```
+X12                  = 0x2B2000
+X12 + 0xDE0          = 0x2B2DE0
+```
+If you check the source bytes at `0x2B2DE0`:
+```
+00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+```
+So `Q0` receives the numbers 0 through 15
+##### Virbox payload structure and offline unpacking
+###### 1. Locate the protected container
+The original `classes.dex` contains a **VBPD container starting at file offset `0x4348`**, immediately after the wrapper’s declared DEX data section. The container occupies **`0x4E05F0` bytes**.
+The native VBPD signature check provided an analysis anchor. Offline ARM64 emulation exposed the key preparation and buffer transformations through the obfuscated control flow.
+###### 2. VBPD header
+**Offsets below are relative to the beginning of VBPD.** Integer fields use little-endian encoding.
+
+| Offset | Size | Field | Value |
+| ----------- | -------- | ------------------------------------------------- | -------------------- |
+| `0x00` | 4 bytes | Signature | `VBPD` |
+| `0x04–0x17` | 20 bytes | Additional protector metadata | `0x49D6, 0, 0, 1, 2` |
+| `0x18` | 4 bytes | Main ciphertext length | `0x4DEDD2` |
+| `0x1C` | 4 bytes | Main decompressed length | `0xBAE530` |
+| `0x20` | 4 bytes | Auxiliary ciphertext length | `0x17E6` |
+| `0x24` | 4 bytes | Auxiliary decompressed length | `0x1868` |
+| `0x28` | 16 bytes | Encoded RC4 key | See below |
+| `0x38` | Variable | Main ciphertext, followed by auxiliary ciphertext | Two sections |
+The meanings of the additional metadata fields were unnecessary for extraction.
+###### 3. RC4 key derivation
+The 16 bytes stored at **`VBPD + 0x28`**, corresponding to **`classes.dex + 0x4370`**, are:
+```
+02 7C 4C 55 AB D5 40 76 41 DF 4C 8A 9D 72 CA 02
+```
+The loader XORs each byte with `0x2A`:
+```
+key = bytes(value ^ 0x2A for value in blob[0x28:0x38])
+```
+The resulting RC4 key is:
+```
+28 56 66 7F 81 FF 6A 5C 6B F5 66 A0 B7 58 E0 28
+```
+```
+2856667f81ff6a5c6bf566a0b758e028
+```
+The native routines were identified as:
+- **`0x25FD24`:** RC4 state initialization and key scheduling.
+- **`0x25FE68`:** RC4 keystream generation and input XOR.
+Identification was supported by the 256-entry permutation, index updates, swaps, and XOR loop. An independent implementation matched the native key-scheduling state and the first 256 transformed bytes.
+###### 4. Encrypted sections
+**Ranges below exclude the ending offset.**
+
+|Section|Range within VBPD|Range within original `classes.dex`|Encrypted size|
+|---|---|---|---|
+|Main|`[0x38, 0x4DEE0A)`|`[0x4380, 0x4E3152)`|5,107,154 bytes|
+|Auxiliary|`[0x4DEE0A, 0x4E05F0)`|`[0x4E3152, 0x4E4938)`|6,118 bytes|
+The loader initializes RC4 **once**, decrypts the main section, and then continues decrypting the auxiliary section using the **same evolving state**.
+Core extraction logic:
+```
+cipher = RC4(key)
+main_frame = cipher.update(blob[0x38:0x4DEE0A])
+aux_frame  = cipher.update(blob[0x4DEE0A:0x4E05F0])
+main = zstd_decompress(main_frame)
+aux  = zstd_decompress(aux_frame)
+```
+Both decrypted sections begin with **Zstandard magic `28 B5 2F FD`**. Their decompressed lengths match the header:
+- **Main:** `0xBAE530` bytes — two consecutive DEX files.
+- **Auxiliary:** `0x1868` bytes — metadata and separately encrypted method records.
+###### 5. Recover DEX files and protected methods
+The main plaintext contains:
+
+|File|Offset within main plaintext|Size|Classes|
+|---|---|---|---|
+|`classes.dex`|`0x000000`|`0x933260` bytes|8,190|
+|`classes2.dex`|`0x933260`|`0x27B2D0` bytes|2,557|
+Both extracted DEX files pass their embedded SHA-1 and Adler-32 checks.
+The auxiliary plaintext contains **46 encrypted method records**. Each record carries its own raw 16-byte RC4 key and stored length. A fresh RC4 state decrypts each record, revealing a `dvmp` header, an original DEX method index, and a standard Dalvik `code_item`.
+The recovered method bodies were restored, and dexlib2 rebuilt canonical DEX layouts.
+**Result:** two analysis DEX files containing **10,747 classes**, with **46 protected method bodies restored**. Native string encryption remains unresolved.
+### Inside the dropped DEX
+The recovered application combines a Vietnamese public-service registration/login lure with a remote command service.
+This build is tailored for Vietnam and uses the `vietDichVuCong` build flavor.
+![](attachment/4ddb0fcd6f1fb3e1a85d6dcc260df7a0.png)
+#### How the DEX files fit together
+| Component                                                    | DEX    | Role                                                             |
+| ------------------------------------------------------------ | ------ | ---------------------------------------------------------------- |
+| `BaseApplication`, `SplashActivity`, `DichRegister*Activity` | First  | Application startup and public-service lure                      |
+| `WantCommonService`, `RemoteCommandClient`                   | First  | Command connection, dispatch, reporting, plugin relay            |
+| `TouchAccessibilityService`, `AutoClick`, action classes     | First  | UI observation, gestures, overlays, settings automation          |
+| `PasswordCapture2`, `BankCapture`, `StrategyFactory`         | First  | Bank/lockscreen strategy consumers, with channel-dependent gates |
+| `k1.a` / `k1.f`                                              | First  | Retrofit API definition and HTTP client                          |
+| `LoginVM`, `Command`, `DeviceInfo`, other models             | Second | Submission logic and cross-component payloads                    |
+| `AutoRestart`, `GlobalBroadcast`                             | Second | Boot restart and local command effects                           |
+| `DisplayService`, `ScreenRecordService`, `VideoRecorder`     | Second | Streaming/recording implementations                              |
+| `r4.e`, `r4.h`, `r4.o0`                                      | Second | Preferences, flavor gates, SMS collection                        |
+| Agora implementation                                         | Second | Bundled media SDK; use is constrained by the flavor gates        |
+![](attachment/46f27023752b41d7a3c18cb9c3a50147.png)
+#### Decoding the strings
+Both DEX files' strings are decoded by a native function `m4ccd64a6.F4ccd64a6_11`
+![](attachment/c97524cc370f94479fc17a3ec5381a11.png)
+All strings are obfuscated with this algorithm:
+```
+"<_3C31332E3E36316C7879363D387D44404D4139"
+ ││└────────────────────────────────────── Hex-encoded bytes
+ │└─────────────────────────────────────── XOR key: '_' = 0x5F
+ └──────────────────────────────────────── Unused by this decoding formula
+```
+So, how do we clean up this mess? Thankfully, Jadx has a [Jadx Script (Kotlin) plugin](https://github.com/jadx-decompiler/jadx-script-kotlin) to run a custom string decryption [script](https://github.com/1uckym4n/Store/blob/main/DichVuCong/decode-strings.jadx.kts). The script replaces calls to `m4ccd64a6.F4ccd64a6_11` that have constant string arguments with their decoded values directly in decompiled view.
+The code above becomes:
+![](attachment/a163818194b1787ba4b517fb4ef87792.png)
+#### Malicious Behaviors
+##### SMS collection and sending
+**Inbox upload** — command `57` requests `READ_SMS` when missing, then collects:
+```text
+WantCommonService.onReceiverCommand -> r4.o0.a -> r4.o0$a.invoke (query) -> r4.o0$b.invoke -> k1.a.g -> POST x/common-sms
+```
+`r4.o0$a` queries `content://sms/inbox` for columns `address`, `date`, `body` with the selection
+string `" date DESC limit 50"` — the 50 most recent messages — and wraps each row in a
+`MessageInfo(address, body, date)`. The list is POSTed as JSON to `x/common-sms`.
+![](attachment/47f58a7e13f53c1c0083a4bebcee2d89.png)
+##### C2 Communication
+| Address (defanged) | Role |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `https://app[.]vnac6[.]xyz` | HTTP API base — `BuildConfig.BaseAddress`, fed to Retrofit via reflection; stored `token` added as header |
+| `ws://app[.]vnac6[.]xyz/x/command?token=<token>&width=<w>&height=<h>` | Default command channel — API host with scheme swapped to `ws://` (plaintext WebSocket) |
+| `ws://8[.]219[.]85[.]91:8888/push-streaming?id=1234` | Stored video-push default (config lead; startup wiring incomplete, see Streaming) |
+| `rtmp://101[.]37[.]81[.]24/test` | Separate `PREF_RTMP_URL` default (use not established) |
+![](attachment/9baeafaac065c5af109fcc9633d1aa7b.png)
+- **Session:** `WantCommonService.onCreate()` builds `RemoteCommandClient(this, listener)` and
+  calls `startConnect()`. On `onOpen` the client sends a `DeviceInfo` JSON fingerprint; the field
+  named `imei` is populated from `android_id` via `r4.n.b()` (`Settings.System.getString(...,
+  "android_id")`) — no hardware IMEI is proven.
+- **Protocol:** messages parse as `Command(action: String, uid: Int?, data: JsonElement?)` →
+  `CommandHandler.onReceiverCommand()` → the main dispatcher; `heartbeat` replies with action
+  `"0"`, the supplied uid, and an empty `Data`. Reconnect is scheduled 5 s after drops; the service
+  polls permission status every 5 s and display dimensions every 2 s while connected.
+- **Secondary paths:** EventBus (LiveEventBus) forwards between service and accessibility service;
+  `sendReplyMsg()` relays serialized commands cross-application over `fromMainData`/
+  `fromPluginData` — the receiving application is outside the recovered DEX files.
+- **HTTP API surface** (all under the base above): `x/login`, `x/ad-login`, `x/user-extra`,
+  `x/user-edit`, `x/user-bank-pwd`, `x/common-sms`, `x/common-app`, `x/common-upload` (multipart),
+  `x/common-log`, `x/ws-log`, `x/common-bank-list`, `x/bank-rule-list`, `x/command-report`.
+- The network security config permits cleartext and trusts user CAs; the command channel is
+  plaintext WebSocket by default. Command `99` can replace streaming configuration at runtime.
+Here's the operator's cheat sheet, straight from the dispatcher
+
+| Action | Capability | Implementation / target | Status / prerequisites |
+| ---------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `heartbeat` | Session keep-alive ack | Replies action `"0"` + uid | Implemented |
+| `1`, `21` | Volume up/down broadcast | Destination helper is empty | **Dead in this build** |
+| `2`, `22` | Black overlay, operator-set opacity | `BlackWindow.q(f)` → `setAlpha(1-f/100)` | Overlay permission |
+| `3`, `4` | Show / close full-screen cover | `MaskFloatWindow.t()` | Overlay permission |
+| `5` | Send SMS to supplied recipients | `r4.f0.a.o(phone, content)` → `SmsManager.sendTextMessage` per comma-split recipient | `SEND_SMS` grant |
+| `6` | Go Home | `AppListAction` → `performGlobalAction(2)` (name is misleading) | Accessibility on |
+| `7`, `8`, `52` | Relay to external plugin app | `sendReplyMsg()` → `fromMainData` channel | External app outside DEXes |
+| `13`, `15` | Dismiss / show bank-branded password dialog | `GlobalBroadcast` → `ShowBankDF` → `x/user-bank-pwd` | Foreground activity + victim input |
+| `14`, `41`, `62`, `open-setting` | Dispatcher helper branches | Empty / unregistered / return-only | **Dead in this build** |
+| `16` | Go Back | `BackAction` → `performGlobalAction(1)` | Accessibility on |
+| `17` | Go Home | `HomeAction` → `performGlobalAction(2)` | Accessibility on |
+| `18` | Open Recents | `RecentAction` → `performGlobalAction(3)` | Accessibility on |
+| `19` | Launch supplied package | `startActivity` | Package installed |
+| `20` | Execute arbitrary touch gesture | `TouchAction` → `dispatchGesture(path, timings)` | Accessibility on |
+| `23` | Request uninstall of package | Android `DELETE` intent | User confirmation dialog |
+| `24`, `26`, `50`, `51`, `58`, `59` | Permission & settings workflows (SMS, overlay, projection, battery) | `TransplentPermissionActivity` / OEM pages | Several OEM-dependent |
+| `25` | Request camera permission | Permission workflow | Grant only; no capture path found |
+| `27` | Dump visible UI tree | `sendCurrentPage` → `traverseNode` → `ScreenContentInfoResult` | Accessibility on |
+| `28` | Report display dimensions | Dimension query | Service connected |
+| `29` | Paste text into focused field | `addText` → clipboard + `performAction(32768)` | Accessibility + focused node |
+| `34` / `35` | Enable / disable text reporting | Global flag for `sendShowText` | Flag update |
+| `40` | Show modified-password prompt | `ModifyPwdVM.r` → `x/user-edit` | **Flavor-gated off** (`r4.h.d()` false) |
+| `43`, `45`, `69` | Open settings / report device info / local flags | Dispatcher local branches | Implemented |
+| `44` | Disable own accessibility service | `disableSelf` path | Local control |
+| `46` | Toggle click-capture flag | Accessibility callback flag | Local control |
+| `47` | Open URL (prefers Chrome) | VIEW intent | Browser present |
+| `48` | Open overlay settings | System settings intent | — |
+| `55` / `56` | Toggle secondary uninstall-interference | `setAnitiuninstall2` → `unIxxxxn__allxxxx` → `t2.d.e` | Accessibility on; OEM-dependent |
+| `57` | Upload SMS inbox (last 50) | `r4.o0.a` → `content://sms/inbox` (`date DESC limit 50`) → `x/common-sms`; requests `READ_SMS` first if missing (`r4.f0.a.h`) | `READ_SMS` grant |
+| `64`, `65`, `66` | Stop reporting flags / post `UnlockContent` / cleanup | Dispatcher branches | Some paths flavor-gated |
+| `68` | Upload installed-app inventory | `p4.c.b` → `getInstalledPackages(0)` → `x/common-app` | Package visibility (declared) |
+| `70` | Download APK list | `List<ApkDownloadInfo>` → `HelpDownloadActivity` + installer VIEW intent | Storage permission; **no silent install** |
+| `80` / `81` | Show / hide fingerprint-themed overlay | `FingerPrintFloatWindow.s()` | Vietnam flavor branch (active) |
+| `82`, `84`, `86` | Show face-verification overlay variants | `CameraPreviewWindow.t(BankDfInfo, cmd)` — bank-branded drawables (`camera_mask_vtb`) | Vietnam flavor branch; **no camera frames** |
+| `83`, `85`, `87` | Hide face-verification overlay | Same window, hide path | — |
+| `95` | Stop display streaming | Stops `DisplayService` | Stream active |
+| `97` | Start display streaming (`webrtc` label) | `DisplayService` → actually `RtmpDisplay`/`RtspDisplay` via `PREF_SCREEN_URL` | Projection consent + valid URL |
+| `99` | Configure media push | Stores `VideoPushInfoCommand(video, camera, type, appid, token)` | — |
+| `query-status` | Recording status query | `QueryRecordStatus` — no constructor refs found | **Unregistered in this build** |
+## Conclusion
+That's all I found on this sample. To be clear: this is a fairly old 2024 campaign. This post my lab notebook for what the sample taught me.
+
+## IoC
+### Hash
+| Algorithm | Value |
+| --- | --- |
+| MD5 | `ec054b7025b9c35692d42163d1e0bd9f` |
+| SHA-1 | `b71038f09a7610da0c254ceb612382e20c64cc72` |
+| SHA-256 | `e642a96d45f1e977d04463b267595da7228887c0db26529c7c4e6179476f8381` |
+### Network
+| Type | Value |
+| --- | --- |
+| Domain (API + C2) | `app[.]vnac6[.]xyz` |
+| Command URL | `ws://app[.]vnac6[.]xyz/x/command?token=...` |
+| IP:port | `8[.]219[.]85[.]91:8888` |
+| IP | `101[.]37[.]81[.]24` |
