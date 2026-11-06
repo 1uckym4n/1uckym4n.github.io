@@ -1,10 +1,13 @@
 # Giao diện & tính năng — đầy đủ options: https://blowfish.page/docs/configuration/
 colorScheme = "ocean"           # bộ màu xanh blue: ocean
 defaultAppearance = "dark"      # site thiết kế dark theo video nền
-autoSwitchAppearance = false    # không theo OS — toggle dark/light vô dụng với nền video
+autoSwitchAppearance = false    # không tự theo OS; nút chuyển sáng/tối vẫn hoạt động
 
 enableSearch = true             # ô tìm kiếm trên header
+smartTOC = true                 # theo dõi mục đang đọc
+smartTOCHideUnfocusedChildren = false
 enableCodeCopy = true           # nút copy ở code block
+defaultSocialImage = "img/background.jpg"
 defaultBackgroundImage = "img/background.jpg"  # hero dự phòng cho bài chưa có featured
                                               # (frame trích từ chính video tuyết)
 
@@ -12,7 +15,6 @@ defaultBackgroundImage = "img/background.jpg"  # hero dự phòng cho bài chưa
 [homepage]
   layout = "profile"
   showRecent = true
-  recentLimit = 6
   showRecentItems = 9
   cardView = true             # Recent dạng lưới card (template có sẵn của theme)
   cardViewScreenWidth = true  # card chiếm toàn bộ chiều ngang, lưới 3 cột
@@ -31,6 +33,8 @@ defaultBackgroundImage = "img/background.jpg"  # hero dự phòng cho bài chưa
 # Trang bài viết
 [article]
   showDate = true
+  showViews = true             # số lượt xem trên bài và card, lưu bằng Firebase
+  showLikes = false
   showDateOnlyInArticle = false
   showDateUpdated = false
   showAuthor = false           # blog cá nhân — không cần box tác giả trong bài
@@ -42,9 +46,19 @@ defaultBackgroundImage = "img/background.jpg"  # hero dự phòng cho bài chưa
   showPagination = true
   showHero = true              # ảnh featured phủ lên đầu trang, chữ đè lên
   heroStyle = "background"     # thumbnail làm nền full-width (basic = ảnh nằm trong cột)
-                               # (lần thử trước giật là do morph bản lỗi — đã sửa trong extend-footer)
+                               # chuyển cảnh nằm trong assets/js/blog-transition.js
   showRelatedContent = true    # mục "Bài liên quan" cuối trang (tính theo tags/categories)
   relatedContentLimit = 3      # tối đa 3 bài liên quan
+
+# Cấu hình Web Firebase; Blowfish tự nạp SDK cho bộ đếm, không cần npm.
+[firebase]
+  apiKey = "AIzaSyCfZBNVqqUBtNSL5DVCVEqkHWAb8gGlYFw"
+  authDomain = "blog-views-counter-6666.firebaseapp.com"
+  projectId = "blog-views-counter-6666"
+  storageBucket = "blog-views-counter-6666.firebasestorage.app"
+  messagingSenderId = "499600966260"
+  appId = "1:499600966260:web:e69ede30cd3f5abe348721"
+  measurementId = "G-XG3JFZV548"
 
 # Mục footer
 [footer]

@@ -1,6 +1,6 @@
 {{/* These partials are cached: decide which background to show in the browser. */}}
-<video id="bg-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true"
+<video id="bg-video" muted loop playsinline preload="none" aria-hidden="true"
   {{ with resources.Get site.Params.defaultBackgroundImage }}poster="{{ .RelPermalink }}"{{ end }}>
-  <source src="{{ "video/background.mp4" | relURL }}" type="video/mp4">
+  <source data-src="{{ "video/background.mp4" | relURL }}" type="video/mp4">
 </video>
 <div id="bg-fade" aria-hidden="true"></div>

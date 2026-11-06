@@ -1,24 +1,196 @@
 /* CSS tùy chỉnh của bạn — theme tự load file này */
 
-/* nới cột chữ bài viết rộng hơn 65ch mặc định */
-main section.prose > div {
-  max-width: 48rem !important;
+/* Give article text the space left beside the table of contents. */
+main > article > section.prose > div:has(> .article-content) {
+  flex: 1;
+  width: 100%;
+  max-width: 54rem;
 }
 
-/* ===== Video background (không render trên bài viết có thumbnail —
-       xem điều kiện trong layouts/partials/extend-footer.html) ===== */
+main > article > section.prose .article-content {
+  max-width: 100%;
+}
+
+@media (min-width: 1024px) {
+  main > article > section.prose > div:has(> .toc) {
+    flex: 0 0 16rem;
+    max-width: 16rem;
+  }
+}
+
+.toc {
+  min-width: 0;
+  padding-inline-start: 0;
+}
+
+.toc > details {
+  margin-inline-start: 0;
+  padding-inline-start: 0;
+}
+
+.toc > details > div {
+  min-width: 0;
+  margin-inline-start: 0;
+  padding-inline-start: 0.75rem;
+}
+
+#TOCView {
+  border-radius: 0;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+}
+
+.toc-inside > summary {
+  margin-inline-start: 0;
+  padding-inline: 0.75rem;
+}
+
+.toc nav ul {
+  margin-block: 0;
+  padding-inline-start: 0;
+}
+
+.toc nav ul ul {
+  padding-inline-start: 0.75rem;
+}
+
+.toc nav li {
+  margin-block: 0;
+}
+
+.toc nav a {
+  display: block;
+  padding-block: 0.25rem;
+  padding-inline: 0.4rem;
+  margin-inline-start: -0.4rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.toc nav a.active {
+  color: #075985;
+  background-color: rgba(14, 165, 233, 0.12);
+  box-shadow: inset 2px 0 #0284c7, 0 0 10px rgba(14, 165, 233, 0.10);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.dark .toc nav a.active {
+  color: #7dd3fc;
+  background-color: rgba(56, 189, 248, 0.14);
+  box-shadow: inset 2px 0 #38bdf8, 0 0 12px rgba(56, 189, 248, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toc nav a {
+    transition: none;
+  }
+}
+
+.toc nav > ul > li > a {
+  font-weight: 600;
+}
+
+.toc nav code {
+  font-size: 0.9em;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.article-content :not(pre) > code {
+  color: #0369a1;
+}
+
+.dark .article-content :not(pre) > code {
+  color: #22d3ee;
+}
+
+/* Scroll the region, preserving native table layout and column headers. */
+.article-table {
+  max-width: 100%;
+  margin-block: 2em;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.article-table > table {
+  display: table;
+  width: 100%;
+  margin: 0;
+}
+
+.article-table :is(th, td) {
+  padding: 0.6rem clamp(0.35rem, 1.5vw, 0.75rem);
+  vertical-align: top;
+}
+
+.article-table thead {
+  background-color: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.article-table td {
+  max-width: 24rem;
+  overflow-wrap: normal;
+}
+
+.article-table code {
+  overflow-wrap: anywhere;
+}
+
+.article-table[data-columns="3"] > table {
+  min-width: 36rem;
+}
+
+.article-table[data-columns="4"] > table {
+  min-width: 48rem;
+}
+
+:focus-visible {
+  outline: 2px solid #0369a1;
+  outline-offset: 3px;
+}
+
+.dark :focus-visible {
+  outline-color: #38bdf8;
+}
+
+.highlight-wrapper > .copy-button {
+  visibility: visible;
+  min-height: 2rem;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.highlight-wrapper:is(:hover, :focus-within) > .copy-button {
+  opacity: 0.95;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .highlight-wrapper > .copy-button {
+    opacity: 0.95;
+    pointer-events: auto;
+  }
+}
+
+/* ===== Video background (JS gỡ trên bài viết có ảnh riêng —
+       xem assets/js/blog-transition.js) ===== */
 #bg-video {
   position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  z-index: -3;   /* đáy: dưới fade, dưới hero, dưới wrapper morph */
+  z-index: -3;   /* đáy: dưới fade, hero và lớp chuyển cảnh */
   pointer-events: none;
 }
 
 /* chỉ trong suốt thân trang khi video nền còn tồn tại — trang bài viết
-   có thumbnail (script trong extend-footer gỡ video) tự về nền tối theme */
+   có ảnh riêng (blog-transition.js gỡ video) tự về nền tối theme */
 body:has(#bg-video) {
   background-color: transparent !important;
 }
@@ -52,8 +224,51 @@ html:not(.dark) #bg-fade {
     rgba(245, 250, 254, 0.96)  100%);
 }
 
-/* Hero nằm TRÊN video + blur nhưng DƯỚI chữ — để wrapper morph (cùng
-   z-index, muộn hơn trong DOM) đè lên được lúc bay */
+/* Single pages over video need contrast even on the brightest video frame. */
+html:has(#single_header):has(#bg-video):not(:has(#hero-background)) {
+  --page-backdrop: linear-gradient(180deg, rgba(248, 250, 252, 0.90), rgba(241, 245, 249, 0.86));
+  --page-text: #1e293b;
+  --page-link: #075985;
+  --page-muted: #475569;
+
+  #bg-fade {
+    background: var(--page-backdrop);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .article-content {
+    color: var(--page-text);
+    --tw-prose-bullets: var(--page-muted);
+  }
+
+  .article-content a {
+    color: var(--page-link);
+    font-weight: 600;
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+
+  #site-footer :is(p, a) {
+    color: var(--page-muted);
+  }
+
+  #site-footer a:hover {
+    color: var(--page-link);
+  }
+}
+
+html.dark:has(#single_header):has(#bg-video):not(:has(#hero-background)) {
+  --page-backdrop: linear-gradient(180deg, rgba(8, 15, 35, 0.76), rgba(8, 15, 35, 0.84));
+  --page-text: #f1f5f9;
+  --page-link: #7dd3fc;
+  --page-muted: #cbd5e1;
+}
+
+/* Hero nằm trên video + blur và dưới nội dung bài. */
 #hero-background {
   z-index: -1;
 }
@@ -133,38 +348,50 @@ main div.relative.w-screen {
 
 /* Lưới Recent: tối đa 3 cột như trang mẫu (theme mặc định chia tới 4-5 cột làm card bé) */
 main div.relative.w-screen section.grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-columns: 1fr !important;
 }
-@media (max-width: 640px) {
+@media (min-width: 640px) {
   main div.relative.w-screen section.grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+@media (min-width: 1024px) {
+  main div.relative.w-screen section.grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 }
 
 /* ===== Thanh tab chủ đề trên trang Blogs ===== */
 .blog-tabbar {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  flex-wrap: nowrap;
   gap: 0.4rem;
-  width: max-content;
+  width: fit-content;
   max-width: 100%;
   margin: 0 0 1.5rem;
   padding: 0.35rem;
   border: 1px solid rgba(147, 197, 253, 0.25) !important;
-  border-radius: 9999px;
-  background-color: rgba(12, 22, 48, 0.55) !important;
+  border-radius: 1rem;
+  background-color: rgba(12, 22, 48, 0.84) !important;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  overscroll-behavior-inline: contain;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
 
 .blog-tabbar button {
+  flex: 0 0 auto;
+  min-height: 2.5rem;
+  white-space: nowrap;
   border: 0;
   background: transparent;
   border-radius: 9999px;
   padding: 0.4rem 1.15rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: rgb(var(--color-neutral-400));
+  color: rgb(var(--color-neutral-300));
   cursor: pointer;
   text-decoration: none !important; /* theme có .active gạch chân — tắt cho tab này */
   transition: color 0.15s ease, background-color 0.15s ease;
@@ -182,7 +409,7 @@ main div.relative.w-screen section.grid {
 
 /* Light mode cho tab bar */
 html:not(.dark) .blog-tabbar {
-  background-color: rgba(255, 255, 255, 0.55) !important;
+  background-color: rgba(255, 255, 255, 0.90) !important;
   border-color: rgba(59, 130, 246, 0.35) !important;
 }
 

@@ -1,0 +1,25 @@
+{{- $url := "" -}}
+{{- $resource := false -}}
+{{- with partial "functions/feature-image.html" . -}}
+  {{- if or (strings.HasPrefix . "https://") (strings.HasPrefix . "http://") -}}
+    {{- $url = . -}}
+  {{- else -}}
+    {{- $resource = or ($.Resources.GetMatch .) (resources.Get .) -}}
+  {{- end -}}
+{{- end -}}
+{{- if not (or $url $resource) -}}
+  {{- range slice "*feature*" "*cover*" "*thumbnail*" -}}
+    {{- if not $resource -}}{{- $resource = $.Resources.GetMatch . -}}{{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- if not (or $url $resource) -}}
+  {{- with site.Params.defaultSocialImage -}}
+    {{- if or (strings.HasPrefix . "https://") (strings.HasPrefix . "http://") -}}
+      {{- $url = . -}}
+    {{- else -}}
+      {{- $resource = resources.Get . -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- with $resource -}}{{- $url = .Permalink -}}{{- end -}}
+{{- return $url -}}

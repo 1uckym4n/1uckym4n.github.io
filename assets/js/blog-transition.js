@@ -143,9 +143,17 @@
   });
 
   const removeArticleVideo = () => {
-    const image = document.getElementById('background-image');
-    if (!image || /\/img\/background(?:[._/]|$)/.test(new URL(image.src).pathname)) return;
-    document.getElementById('bg-video')?.remove();
+    if (!document.getElementById('hero-background')) return;
+    const video = document.getElementById('bg-video');
+    if (video) {
+      video.pause();
+      if (video.hasAttribute('src') || video.querySelector('source[src]')) {
+        video.removeAttribute('src');
+        video.querySelectorAll('source[src]').forEach(source => source.removeAttribute('src'));
+        video.load();
+      }
+      video.remove();
+    }
     document.getElementById('bg-fade')?.remove();
   };
   const sizeVideoFade = () => {
@@ -153,6 +161,8 @@
     if (!fade) return;
     if (fade.parentElement !== root) root.appendChild(fade);
     root.style.position = 'relative';
+    // Exclude the previous fade height when a mobile layout shrinks again.
+    fade.style.height = '0px';
     fade.style.height = Math.max(root.scrollHeight, innerHeight) + 'px';
   };
 

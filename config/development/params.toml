@@ -1,0 +1,6 @@
+# Local previews do not contribute to the public view counter.
+[firebase]
+  apiKey = ""
+
+[article]
+  showViews = false

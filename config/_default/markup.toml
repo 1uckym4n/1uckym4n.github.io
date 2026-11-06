@@ -1,0 +1,13 @@
+# Match the theme's class-based light/dark syntax palettes.
+[highlight]
+  noClasses = false
+
+[goldmark.parser]
+  wrapStandAloneImageWithinParagraph = false
+
+[goldmark.parser.attribute]
+  block = true
+
+[tableOfContents]
+  startLevel = 2
+  endLevel = 4

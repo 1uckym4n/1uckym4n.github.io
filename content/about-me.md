@@ -10,5 +10,6 @@ showWordCount: false
 Hi. Just Hi
 
 - GitHub: [1uckym4n](https://github.com/1uckym4n)
+- Email: tranduynam123@outlook.com
 
 

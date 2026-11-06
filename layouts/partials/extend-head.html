@@ -1,3 +1,7 @@
 {{/* Register before the first paint, including cross-document pagereveal. */}}
 {{ $transition := resources.Get "js/blog-transition.js" | resources.Minify | resources.Fingerprint }}
 <script src="{{ $transition.RelPermalink }}" integrity="{{ $transition.Data.Integrity }}"></script>
+{{ $background := resources.Get "js/background-video.js" | resources.Minify | resources.Fingerprint }}
+<script defer src="{{ $background.RelPermalink }}" integrity="{{ $background.Data.Integrity }}"></script>
+{{ $toc := resources.Get "js/toc-highlight.js" | resources.Minify | resources.Fingerprint }}
+<script defer src="{{ $toc.RelPermalink }}" integrity="{{ $toc.Data.Integrity }}"></script>

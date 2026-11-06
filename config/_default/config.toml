@@ -5,11 +5,13 @@ defaultContentLanguage = "en"
 title = "dn4m"
 
 enableRobotsTXT = true
-paginate = 20
 summaryLength = 30
 
 buildDrafts = false
 buildFuture = false
+
+[pagination]
+  pagerSize = 20
 
 # Section chứa bài viết — trang chủ lấy bài mới từ đây
 # ("Categories" là taxonomy và "About me" là trang đơn, không nằm trong mainSections)

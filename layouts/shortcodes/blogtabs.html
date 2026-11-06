@@ -4,9 +4,9 @@
   {{- $terms = union $terms (.GetTerms "categories") -}}
 {{- end -}}
 
-<div id="blog-tabs" class="blog-tabbar">
-  <button type="button" data-cat="all" class="active">All</button>
-  {{- range sort $terms "Title" }}<button type="button" data-cat="{{ .Title }}">{{ .Title }}</button>{{ end }}
+<div id="blog-tabs" class="blog-tabbar" role="group" aria-label="Filter posts by category">
+  <button type="button" data-cat="all" class="active" aria-pressed="true">All</button>
+  {{- range sort $terms "Title" }}<button type="button" data-cat="{{ .Title }}" aria-pressed="false">{{ .Title }}</button>{{ end }}
 </div>
 
 {{- $m := dict -}}
@@ -18,7 +18,7 @@
 <script id="blogtabs-data" type="application/json">{{ $m | jsonify | safeJS }}</script>
 
 <script>
-(function () {
+function initBlogTabs() {
   var bar = document.getElementById('blog-tabs');
   if (!bar) return;
   var data = JSON.parse(document.getElementById('blogtabs-data').textContent);
@@ -30,7 +30,11 @@
   });
 
   function setTab(cat) {
-    tabs.forEach(function (b) { b.classList.toggle('active', b.dataset.cat === cat); });
+    tabs.forEach(function (b) {
+      var selected = b.dataset.cat === cat;
+      b.classList.toggle('active', selected);
+      b.setAttribute('aria-pressed', String(selected));
+    });
     cards.forEach(function (card) {
       var href = card.querySelector('a[href]').getAttribute('href');
       var cats = data[href] || [];
@@ -45,7 +49,16 @@
     });
   });
 
-  var h = decodeURIComponent(location.hash.replace('#', ''));
+  var h;
+  try { h = decodeURIComponent(location.hash.replace('#', '')); }
+  catch (_) { h = ''; }
   setTab(tabs.some(function (b) { return b.dataset.cat === h; }) ? h : 'all');
-})();
+}
+
+// The shortcode appears before the article list in the page.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initBlogTabs, { once: true });
+} else {
+  initBlogTabs();
+}
 </script>

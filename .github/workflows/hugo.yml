@@ -23,11 +23,14 @@ jobs:
       - name: Setup Hugo Extended
         uses: peaceiris/actions-hugo@v3
         with:
-          hugo-version: "latest"
+          hugo-version: "0.167.0"
           extended: true
 
       - name: Build
         run: hugo --minify
+
+      - name: Check generated HTML and local resources
+        run: python3 scripts/check-blog.py public
 
       - name: Deploy lên nhánh gh-pages
         uses: peaceiris/actions-gh-pages@v4
