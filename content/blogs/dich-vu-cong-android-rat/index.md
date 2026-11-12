@@ -530,6 +530,7 @@ The main plaintext contains:
 |---|---|---|---|
 |`classes.dex`|`0x000000`|`0x933260` bytes|8,190|
 |`classes2.dex`|`0x933260`|`0x27B2D0` bytes|2,557|
+
 Both extracted DEX files pass their embedded SHA-1 and Adler-32 checks.
 The auxiliary plaintext contains **46 encrypted method records**. Each record carries its own raw 16-byte RC4 key and stored length. A fresh RC4 state decrypts each record, revealing a `dvmp` header, an original DEX method index, and a standard Dalvik `code_item`.
 The recovered method bodies were restored, and dexlib2 rebuilt canonical DEX layouts.
